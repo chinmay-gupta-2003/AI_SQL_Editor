@@ -2,7 +2,7 @@ import { tables } from "constants/tables";
 import { databases } from "constants/databases";
 import { columnsMapping } from "constants/mappings";
 
-const DUMMY = "AIzaSyDRDwy3euAQuwn8s12oKM5RcfEIs-fgKVM"; // test api key
+const DUMMY = "AIzaSyDdMC4kwXfaI8Jgmawj0dmnCddIi3VlXnI"; // test api key
 
 // Auto detect foreign keys based on *_id naming
 const detectForeignKeys = (tableName, columns) => {
