@@ -2,7 +2,7 @@ import { tables } from "constants/tables";
 import { databases } from "constants/databases";
 import { columnsMapping } from "constants/mappings";
 
-const GEMINI_API_KEY = "AIzaSyAsn9ejDD89roWq-9PfDQM4SUxYRqhNs84"; // test api key
+const DUMMY = "AIzaSyDRDwy3euAQuwn8s12oKM5RcfEIs-fgKVM"; // test api key
 
 // Auto detect foreign keys based on *_id naming
 const detectForeignKeys = (tableName, columns) => {
@@ -73,7 +73,7 @@ export const getSQLQueryFromGemini = async (
     const schemaContext = buildSchemaContext();
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${DUMMY}`,
       {
         method: "POST",
         headers: {
