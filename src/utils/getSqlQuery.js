@@ -1,23 +1,58 @@
 import { tables } from "constants/tables";
 import { databases } from "constants/databases";
+import { columnsMapping } from "constants/mappings";
 
 const GEMINI_API_KEY = "AIzaSyAsn9ejDD89roWq-9PfDQM4SUxYRqhNs84"; // test api key
 
-// Convert schema into readable format for Gemini
+// Auto detect foreign keys based on *_id naming
+const detectForeignKeys = (tableName, columns) => {
+  const foreignKeys = [];
+
+  columns.forEach((col) => {
+    if (col.accessorKey.endsWith("_id") && col.accessorKey !== "id") {
+      const referencedTable = col.accessorKey
+        .replace("_id", "")
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+
+      foreignKeys.push(
+        `${col.accessorKey} references ${referencedTable}.id`
+      );
+    }
+  });
+
+  return foreignKeys;
+};
+
 const buildSchemaContext = () => {
-  let schemaText = "Available Databases and Tables:\n\n";
+  let schemaText = "DATABASE SCHEMA:\n\n";
 
   databases.forEach((db) => {
     schemaText += `Database: ${db.name}\n`;
 
-    const dbTables = tables.filter((t) => t.databaseId === db.id);
+    const dbTables = tables[db.id] || [];
 
     dbTables.forEach((table) => {
       schemaText += `  Table: ${table.name}\n`;
 
-      table.columns.forEach((col) => {
-        schemaText += `    - ${col.name} (${col.type})\n`;
+      const columns = columnsMapping[table.id] || [];
+
+      schemaText += `    Columns:\n`;
+      columns.forEach((col) => {
+        schemaText += `      - ${col.accessorKey}\n`;
       });
+
+      const foreignKeys = detectForeignKeys(
+        table.name,
+        columns
+      );
+
+      if (foreignKeys.length) {
+        schemaText += `    Foreign Keys:\n`;
+        foreignKeys.forEach((fk) => {
+          schemaText += `      - ${fk}\n`;
+        });
+      }
 
       schemaText += "\n";
     });
@@ -28,7 +63,10 @@ const buildSchemaContext = () => {
   return schemaText;
 };
 
-export const getSQLQueryFromGemini = async (userInput, setLoading) => {
+export const getSQLQueryFromGemini = async (
+  userInput,
+  setLoading
+) => {
   try {
     setLoading(true);
 
@@ -38,7 +76,9 @@ export const getSQLQueryFromGemini = async (userInput, setLoading) => {
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           contents: [
             {
@@ -47,13 +87,15 @@ export const getSQLQueryFromGemini = async (userInput, setLoading) => {
                   text: `
 You are an expert SQL generator.
 
-IMPORTANT RULES:
-- Only use tables and columns listed below.
-- Generate proper JOIN conditions using matching foreign keys.
-- Do NOT guess table names.
-- Return ONLY raw SQL query.
-- No explanation.
+STRICT RULES:
+- Use ONLY tables and columns from the schema below.
+- Use foreign keys for JOIN conditions.
+- Do NOT invent columns.
+- Do NOT invent tables.
+- Always use proper SQL JOIN syntax.
+- Return ONLY raw SQL.
 - No markdown.
+- No explanation.
 
 ${schemaContext}
 
@@ -68,7 +110,9 @@ User Request:
       }
     );
 
-    if (!response.ok) throw new Error("Failed to fetch SQL query");
+    if (!response.ok) {
+      throw new Error("Failed to fetch SQL query");
+    }
 
     const data = await response.json();
 
